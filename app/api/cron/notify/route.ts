@@ -81,68 +81,129 @@ export async function GET(): Promise<NextResponse<CResponse>> {
     const today = `${year}-${month}-${day}`;
     const nextDay = `${year}-${month}-${day + 1}`;
 
-    const response = await fetch(`${BASEURL}format=${FORMAT}&starttime=${today}&endtime=${nextDay}&minmagnitude=${MINMAG}`);
+    const response = await fetch(`${BASEURL}format=${FORMAT}&starttime=${today}&endtime=${nextDay}&minmagnitude=${MINMAG}&orderby=time`);
     const rawData = await response.json();
 
     const earthquakes = rawData.features;
 
-    for (const earthquake of earthquakes) {
-        const properties = earthquake.properties;
-        const geometry = earthquake.geometry;
+    const firstEarthquake = earthquakes[0];
 
-        const lat = geometry.coordinates[1];
-        const lon = geometry.coordinates[0];
+    const properties = firstEarthquake.properties;
+    const geometry = firstEarthquake.geometry;
 
-        const distance = calculateDistance(KMUTT_LAT, KMUTT_LON, lat, lon);
+    const lat = geometry.coordinates[1];
+    const lon = geometry.coordinates[0];
 
-        if (distance <= 2000 && (calculateTimeDifference(properties.time) <= TIME_DIFFERENCE_S || calculateTimeDifference(properties.updated) <= TIME_DIFFERENCE_S)) {
-            const data: IData = {
-                username: "Earthquake Notifier",
-                content: "||@everyone||",
-                avatar_url: "https://emojicombos.com/wp-content/uploads/2020/04/earthquake-emoji-1.png",
-                embeds: [
-                    {
-                        title: `🚨 Earthquake Alert`,
-                        url: properties.url,
-                        description: `Earthquake detected!`,
-                        color: 16711680,
-                        fields: [
-                            {
-                                name: "🌍 Location",
-                                value: properties.place,
-                                inline: false
-                            },
-                            {
-                                name: "📏 Distance",
-                                value: `${distance.toFixed(2)} km`,
-                                inline: true
-                            },
-                            {
-                                name: "📏 Depth",
-                                value: `${properties.depth} km`,
-                                inline: true
-                            },
-                            {
-                                name: "📏 Magnitude",
-                                value: `${properties.mag} ${properties.magType}`,
-                                inline: true
-                            },
-                            {
-                                name: "🕒 Time",
-                                value: `${new Date(properties.time).toLocaleString()}`,
-                                inline: false
-                            },
-                        ],
-                        footer: {
-                            text: "Earthquake Notifier Made by @oangsa"
-                        }
+    const distance = calculateDistance(KMUTT_LAT, KMUTT_LON, lat, lon);
+
+    console.log(firstEarthquake);
+
+
+    if (distance <= 2000 && (calculateTimeDifference(properties.time) <= TIME_DIFFERENCE_S || calculateTimeDifference(properties.updated) <= TIME_DIFFERENCE_S)) {
+        const data: IData = {
+            username: "Earthquake Notifier",
+            content: "||@everyone||",
+            avatar_url: "https://emojicombos.com/wp-content/uploads/2020/04/earthquake-emoji-1.png",
+            embeds: [
+                {
+                    title: `🚨 Earthquake Alert`,
+                    url: properties.url,
+                    description: `Earthquake detected!`,
+                    color: 16711680,
+                    fields: [
+                        {
+                            name: "🌍 Location",
+                            value: properties.place,
+                            inline: false
+                        },
+                        {
+                            name: "📏 Distance",
+                            value: `${distance.toFixed(2)} km`,
+                            inline: true
+                        },
+                        {
+                            name: "📏 Depth",
+                            value: `${properties.depth} km`,
+                            inline: true
+                        },
+                        {
+                            name: "📏 Magnitude",
+                            value: `${properties.mag} ${properties.magType}`,
+                            inline: true
+                        },
+                        {
+                            name: "🕒 Time",
+                            value: `${new Date(properties.time).toLocaleString()}`,
+                            inline: false
+                        },
+                    ],
+                    footer: {
+                        text: "Earthquake Notifier Made by @oangsa"
                     }
-                ]
-            }
-
-            await sendToDiscord(data);
+                }
+            ]
         }
+
+        await sendToDiscord(data);
     }
+
+    // for (const earthquake of earthquakes) {
+    //     const properties = earthquake.properties;
+    //     const geometry = earthquake.geometry;
+
+    //     const lat = geometry.coordinates[1];
+    //     const lon = geometry.coordinates[0];
+
+    //     const distance = calculateDistance(KMUTT_LAT, KMUTT_LON, lat, lon);
+
+    //     if (distance <= 2000 && (calculateTimeDifference(properties.time) <= TIME_DIFFERENCE_S || calculateTimeDifference(properties.updated) <= TIME_DIFFERENCE_S)) {
+    //         const data: IData = {
+    //             username: "Earthquake Notifier",
+    //             content: "||@everyone||",
+    //             avatar_url: "https://emojicombos.com/wp-content/uploads/2020/04/earthquake-emoji-1.png",
+    //             embeds: [
+    //                 {
+    //                     title: `🚨 Earthquake Alert`,
+    //                     url: properties.url,
+    //                     description: `Earthquake detected!`,
+    //                     color: 16711680,
+    //                     fields: [
+    //                         {
+    //                             name: "🌍 Location",
+    //                             value: properties.place,
+    //                             inline: false
+    //                         },
+    //                         {
+    //                             name: "📏 Distance",
+    //                             value: `${distance.toFixed(2)} km`,
+    //                             inline: true
+    //                         },
+    //                         {
+    //                             name: "📏 Depth",
+    //                             value: `${properties.depth} km`,
+    //                             inline: true
+    //                         },
+    //                         {
+    //                             name: "📏 Magnitude",
+    //                             value: `${properties.mag} ${properties.magType}`,
+    //                             inline: true
+    //                         },
+    //                         {
+    //                             name: "🕒 Time",
+    //                             value: `${new Date(properties.time).toLocaleString()}`,
+    //                             inline: false
+    //                         },
+    //                     ],
+    //                     footer: {
+    //                         text: "Earthquake Notifier Made by @oangsa"
+    //                     }
+    //                 }
+    //             ]
+    //         }
+
+    //         await sendToDiscord(data);
+    //     }
+    // }
 
     return NextResponse.json({ message: "OK" }, { status: 200 })
 }
