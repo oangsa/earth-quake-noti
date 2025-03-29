@@ -1,12 +1,37 @@
 import { NextResponse } from 'next/server';
-import { parse } from 'path';
 
 type CResponse = {
     message: string;
     success?: boolean;
 }
 
-async function sendToDiscord(data: any): Promise<void> {
+interface IData {
+    embeds: IEmbed[];
+    username?: string;
+    content?: string;
+    avatar_url?: string;
+}
+
+interface IEmbed {
+    title: string;
+    url?: string;
+    description?: string;
+    color?: number;
+    fields?: IField[];
+    footer?: IFooter;
+}
+
+interface IField {
+    name: string;
+    value: string;
+    inline?: boolean;
+}
+
+interface IFooter {
+    text: string;
+}
+
+async function sendToDiscord(data: IData): Promise<void> {
     const response = await fetch(process.env.WEBHOOK_URL as string, {
         method: "POST",
         headers: {
@@ -71,7 +96,7 @@ export async function GET(): Promise<NextResponse<CResponse>> {
         const distance = calculateDistance(KMUTT_LAT, KMUTT_LON, lat, lon);
 
         if (distance <= 2000 && (calculateTimeDifference(properties.time) <= TIME_DIFFERENCE_S || calculateTimeDifference(properties.updated) <= TIME_DIFFERENCE_S)) {
-            const data = {
+            const data: IData = {
                 username: "Earthquake Notifier",
                 content: "||@everyone||",
                 avatar_url: "https://emojicombos.com/wp-content/uploads/2020/04/earthquake-emoji-1.png",
