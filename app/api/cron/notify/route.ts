@@ -1,3 +1,5 @@
+import { IData, IEvent } from '@/interfaces/interfaces';
+import pushEvent from '@/libs/pushEvent';
 import { NextResponse } from 'next/server';
 
 type CResponse = {
@@ -5,31 +7,6 @@ type CResponse = {
     success?: boolean;
 }
 
-interface IData {
-    embeds: IEmbed[];
-    username?: string;
-    content?: string;
-    avatar_url?: string;
-}
-
-interface IEmbed {
-    title: string;
-    url?: string;
-    description?: string;
-    color?: number;
-    fields?: IField[];
-    footer?: IFooter;
-}
-
-interface IField {
-    name: string;
-    value: string;
-    inline?: boolean;
-}
-
-interface IFooter {
-    text: string;
-}
 
 async function sendToDiscord(data: IData): Promise<void> {
     const response = await fetch(process.env.WEBHOOK_URL as string, {
@@ -81,7 +58,9 @@ export async function GET(): Promise<NextResponse<CResponse>> {
     const today = `${year}-${month}-${day}`;
     const nextDay = `${year}-${month}-${day + 1}`;
 
-    const response = await fetch(`${BASEURL}format=${FORMAT}&starttime=${today}&endtime=${nextDay}&minmagnitude=${MINMAG}&orderby=time`);
+    const URL = `${BASEURL}format=${FORMAT}&starttime=${today}&endtime=${nextDay}&minmagnitude=${MINMAG}&orderby=time`;
+
+    const response = await fetch(URL);
     const rawData = await response.json();
 
     const earthquakes = rawData.features;
@@ -96,10 +75,23 @@ export async function GET(): Promise<NextResponse<CResponse>> {
 
     const distance = calculateDistance(KMUTT_LAT, KMUTT_LON, lat, lon);
 
-    console.log(firstEarthquake);
+    console.log("URL:", URL);
+
+    const event: IEvent = {
+        id: "",
+        event_id: properties.ids,
+        place: properties.place,
+        time: new Date(properties.time),
+        magnitude: properties.mag
+    }
 
 
     if (distance <= 2000 && (calculateTimeDifference(properties.time) <= TIME_DIFFERENCE_S || calculateTimeDifference(properties.updated) <= TIME_DIFFERENCE_S)) {
+
+        const response = await pushEvent(event);
+
+        if (!response.success) return NextResponse.json({ message: "Event already exists" }, { status: 400 });
+
         const data: IData = {
             username: "Earthquake Notifier",
             content: "||@everyone||",
