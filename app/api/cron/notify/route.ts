@@ -78,7 +78,7 @@ export async function GET(): Promise<NextResponse<CResponse>> {
 
     const event: IEvent = {
         id: "",
-        event_id: properties.ids,
+        event_id: firstEarthquake.id,
         place: properties.place,
         time: new Date(properties.time),
         magnitude: properties.mag
