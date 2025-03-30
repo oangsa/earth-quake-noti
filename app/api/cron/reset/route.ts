@@ -1,4 +1,3 @@
-import { IData, IEvent } from '@/interfaces/interfaces';
 import { NextResponse } from 'next/server';
 import client from '@/libs/prismadb';
 

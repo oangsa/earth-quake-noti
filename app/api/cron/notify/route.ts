@@ -7,7 +7,6 @@ type CResponse = {
     success?: boolean;
 }
 
-
 async function sendToDiscord(data: IData): Promise<void> {
     const response = await fetch(process.env.WEBHOOK_URL as string, {
         method: "POST",
