@@ -1,4 +1,4 @@
-import { IData, IEvent } from '@/interfaces/interfaces';
+import { IData, IEvent, IUser } from '@/interfaces/interfaces';
 import pushEvent from '@/libs/pushEvent';
 import { NextResponse } from 'next/server';
 
@@ -40,6 +40,17 @@ function calculateTimeDifference(time: string): number {
     return difference / 1000; // seconds
 }
 
+async function getData(): Promise<IUser> {
+
+    const response = await fetch(`https://discord.com/api/v9/users/${process.env.USER_ID}`, {
+        headers: {
+            "Authorization": `Bot ${process.env.BOT_TOKEN}`
+        }
+    });
+
+    return await response.json();
+}
+
 export async function GET(): Promise<NextResponse<CResponse>> {
     const BASEURL = process.env.BASEURL as string;
     const FORMAT = process.env.FORMAT as string;
@@ -61,140 +72,80 @@ export async function GET(): Promise<NextResponse<CResponse>> {
 
     const response = await fetch(URL);
     const rawData = await response.json();
+    const userData = await getData();
 
     const earthquakes = rawData.features;
 
-    const firstEarthquake = earthquakes[0];
-
-    const properties = firstEarthquake.properties;
-    const geometry = firstEarthquake.geometry;
-
-    const lat = geometry.coordinates[1];
-    const lon = geometry.coordinates[0];
-
-    const distance = calculateDistance(KMUTT_LAT, KMUTT_LON, lat, lon);
-
     console.log("URL:", URL);
 
-    const event: IEvent = {
-        id: "",
-        event_id: firstEarthquake.id,
-        place: properties.place,
-        time: new Date(properties.time),
-        magnitude: properties.mag
-    }
+    for (const earthquake of earthquakes) {
+        const properties = earthquake.properties;
+        const geometry = earthquake.geometry;
+
+        const lat = geometry.coordinates[1];
+        const lon = geometry.coordinates[0];
+
+        const distance = calculateDistance(KMUTT_LAT, KMUTT_LON, lat, lon);
 
 
-    if (distance <= 2000 && (calculateTimeDifference(properties.time) <= TIME_DIFFERENCE_S || calculateTimeDifference(properties.updated) <= TIME_DIFFERENCE_S)) {
-
-        const response = await pushEvent(event);
-
-        if (!response.success) return NextResponse.json({ message: "Event already exists" }, { status: 400 });
-
-        const data: IData = {
-            username: "Earthquake Notifier",
-            content: "||@everyone||",
-            avatar_url: "https://emojicombos.com/wp-content/uploads/2020/04/earthquake-emoji-1.png",
-            embeds: [
-                {
-                    title: `🚨 Earthquake Alert`,
-                    url: properties.url,
-                    description: `Earthquake detected!`,
-                    color: 16711680,
-                    fields: [
-                        {
-                            name: "🌍 Location",
-                            value: properties.place,
-                            inline: false
-                        },
-                        {
-                            name: "📏 Distance",
-                            value: `${distance.toFixed(2)} km`,
-                            inline: true
-                        },
-                        {
-                            name: "📏 Depth",
-                            value: `${properties.depth} km`,
-                            inline: true
-                        },
-                        {
-                            name: "📏 Magnitude",
-                            value: `${properties.mag} ${properties.magType}`,
-                            inline: true
-                        },
-                        {
-                            name: "🕒 Time",
-                            value: `${new Date(properties.time).toLocaleString()}`,
-                            inline: false
-                        },
-                    ],
-                    footer: {
-                        text: "Earthquake Notifier Made by @oangsa"
-                    }
-                }
-            ]
+        const event: IEvent = {
+            id: "",
+            event_id: earthquake.id,
+            place: properties.place,
+            time: new Date(properties.time),
+            magnitude: properties.mag
         }
 
-        await sendToDiscord(data);
+        // distance <= 2000 && (calculateTimeDifference(properties.time) <= TIME_DIFFERENCE_S || calculateTimeDifference(properties.updated) <= TIME_DIFFERENCE_S)
+        if (distance <= 2000 && (calculateTimeDifference(properties.time) <= TIME_DIFFERENCE_S || calculateTimeDifference(properties.updated) <= TIME_DIFFERENCE_S)) {
+
+            const response = await pushEvent(event);
+
+            if (!response.success) return NextResponse.json({ message: "Event already exists" }, { status: 400 });
+
+            const content = `||@everyone||${properties.tsunami ? "\n**Tsunami has a chance to occur!**\n" : ""}`;
+
+            const data: IData = {
+                username: "Earthquake Notifier",
+                content: content,
+                embeds: [
+                    {
+                        timestamp: new Date().toISOString(),
+                        title: `Earthquake Detected!`,
+                        url: properties.url,
+                        color: 16711680,
+                        fields: [
+                            {
+                                name: "🌍 Location",
+                                value: properties.place,
+                                inline: false
+                            },
+                            {
+                                name: "📏 Distance From KMUTT",
+                                value: `${distance.toFixed(0)} km`,
+                                inline: true
+                            },
+                            {
+                                name: "📏 Magnitude",
+                                value: `${properties.mag} ${properties.magType}`,
+                                inline: false
+                            },
+                            {
+                                name: "🕒 Time Occurred",
+                                value: `${new Date(properties.time).toLocaleString("en-US", { timeZone: "Asia/Bangkok" })}`,
+                                inline: false
+                            },
+                        ],
+                        footer: {
+                            text: `made with ❤️ by @${userData.username}`,
+                        },
+                    }
+                ]
+            }
+
+            await sendToDiscord(data);
+        }
     }
-
-    // for (const earthquake of earthquakes) {
-    //     const properties = earthquake.properties;
-    //     const geometry = earthquake.geometry;
-
-    //     const lat = geometry.coordinates[1];
-    //     const lon = geometry.coordinates[0];
-
-    //     const distance = calculateDistance(KMUTT_LAT, KMUTT_LON, lat, lon);
-
-    //     if (distance <= 2000 && (calculateTimeDifference(properties.time) <= TIME_DIFFERENCE_S || calculateTimeDifference(properties.updated) <= TIME_DIFFERENCE_S)) {
-    //         const data: IData = {
-    //             username: "Earthquake Notifier",
-    //             content: "||@everyone||",
-    //             avatar_url: "https://emojicombos.com/wp-content/uploads/2020/04/earthquake-emoji-1.png",
-    //             embeds: [
-    //                 {
-    //                     title: `🚨 Earthquake Alert`,
-    //                     url: properties.url,
-    //                     description: `Earthquake detected!`,
-    //                     color: 16711680,
-    //                     fields: [
-    //                         {
-    //                             name: "🌍 Location",
-    //                             value: properties.place,
-    //                             inline: false
-    //                         },
-    //                         {
-    //                             name: "📏 Distance",
-    //                             value: `${distance.toFixed(2)} km`,
-    //                             inline: true
-    //                         },
-    //                         {
-    //                             name: "📏 Depth",
-    //                             value: `${properties.depth} km`,
-    //                             inline: true
-    //                         },
-    //                         {
-    //                             name: "📏 Magnitude",
-    //                             value: `${properties.mag} ${properties.magType}`,
-    //                             inline: true
-    //                         },
-    //                         {
-    //                             name: "🕒 Time",
-    //                             value: `${new Date(properties.time).toLocaleString()}`,
-    //                             inline: false
-    //                         },
-    //                     ],
-    //                     footer: {
-    //                         text: "Earthquake Notifier Made by @oangsa"
-    //                     }
-    //                 }
-    //             ]
-    //         }
-
-    //         await sendToDiscord(data);
-    //     }
-    // }
 
     return NextResponse.json({ message: "OK" }, { status: 200 })
 }
