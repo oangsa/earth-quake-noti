@@ -60,17 +60,23 @@ export async function GET(): Promise<NextResponse<CResponse>> {
     const TIME_DIFFERENCE_S = parseInt(process.env.TIME_DIFFERENCE_S as string); // seconds
 
     // YYYY-MM-DD
-    const date = new Date();
+    const date = new Date(new Date().toLocaleDateString("en-US", { timeZone: "Asia/Bangkok" }));
+    const nextDate = new Date(date);
+    nextDate.setDate(nextDate.getDate() + 1);
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
     const day = date.getDate();
 
     const today = `${year}-${month}-${day}`;
-    const nextDay = `${year}-${month}-${day + 1}`;
+    const nextDay = `${nextDate.getFullYear()}-${nextDate.getMonth() + 1}-${nextDate.getDate()}`;
+
+    console.log("Today:", today);
+    console.log("Next Day:", nextDay);
 
     const URL = `${BASEURL}format=${FORMAT}&starttime=${today}&endtime=${nextDay}&minmagnitude=${MINMAG}&orderby=time`;
 
     const response = await fetch(URL);
+
     const rawData = await response.json();
     const userData = await getData();
 
